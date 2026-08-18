@@ -209,6 +209,7 @@ static __always_inline void force_finish_http(http_info_t *info,
             info->resp_len = 0;
             info->end_monotime_ns = bpf_ktime_get_ns();
             info->status = 499;
+            bpf_printk("OBIFORCE close type=%d", info->type);
         }
     }
 
@@ -232,9 +233,11 @@ static __always_inline http_info_t *get_or_set_http_info(http_info_t *info,
             const u8 req_type = request_type_by_direction(direction, packet_type);
             if (!http_info_complete(old_info)) {
                 if (old_info->type == req_type && is_duplicate_info(old_info)) {
+                    bpf_printk("OBIDROP dup type=%d", old_info->type);
                     return 0;
                 }
                 cleanup_incomplete_http_server_thread_trace(old_info, NULL);
+                bpf_printk("OBIDROP reuse type=%d status=%d", old_info->type, old_info->status);
             }
             // this will delete ongoing_http for this connection info if there's full stale request
             finish_http(old_info, pid_conn, NULL);
